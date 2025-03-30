@@ -83,6 +83,8 @@ class bullet(GameSprite):
         if self.rect.bottom < 0:
             self.kill()
 
+    
+
 player = Player("rocket.png", (50, 70), (WIDTH // 2, HEIGHT // 2), 5)
 
 enemies = pygame.sprite.Group()
@@ -91,7 +93,7 @@ for i in range(enemies_num):
     new_enemy = Enemy("ufo.png", (70, 50),
                 (random.randint(50, WIDTH - 50),
                 0),
-                random.randint(5, 8))
+                random.randint(3, 5))
     
     enemies.add(new_enemy)
 
@@ -122,6 +124,30 @@ while game:
 
         bullets.update()
         bullets.draw(sc)
+
+    if score == 30:
+        finish = True
+        sc.fill(BLACK)
+        text = medium_font.render("YOU WIN", True, WHITE)
+        sc.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 2 - text.get_height() // 2))
+
+    if lost >= 30:
+        finish = True
+        sc.fill(BLACK)
+        text = medium_font.render("YOU LOSE", True, WHITE)
+        sc.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 2 - text.get_height() // 2))
     
     pygame.display.update()
-    clock.tick(FPS)
+    clock.tick(FPS)        
+    bullets.update()
+    bullets.draw(sc)
+
+    collide = pygame.sprite.groupcollide(enemies, bullets, True, True)
+    for enemy in collide:
+        score += 1
+        new_enemy = Enemy("ufo.png", (70, 50),
+                (random.randint(50, WIDTH - 50),
+                0),
+                random.randint(3, 5))
+            
+        enemies.add(new_enemy)
