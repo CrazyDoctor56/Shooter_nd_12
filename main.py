@@ -20,7 +20,13 @@ lost = 0
 level = 1
 level_threshold = 10
 
-medium_font = pygame.font.SysFont("Arial", 36)
+ammo = 10
+max_ammo = 10
+reloading = False
+reload_time = 2000
+reload_start_time = 0
+
+medium_font = pygame.font.SysFont("Arial", 20)
 
 sc = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Maze")
@@ -61,9 +67,15 @@ class Player(GameSprite):
             self.fire()
 
     def fire(self):
-        new_bullet = Bullet("bullet.png", (15, 20), (self.rect.centerx, self.rect.top), 9)
-        bullets.add(new_bullet)
-        pygame.mixer.Sound("fire.ogg").play()
+        global ammo, reloading, reload_start_time
+        if not reloading and ammo > 0:
+            new_bullet = Bullet("bullet.png", (15, 20), (self.rect.centerx, self.rect.top), 9)
+            bullets.add(new_bullet)
+            pygame.mixer.Sound("fire.ogg").play()
+            ammo -= 1
+            if ammo == 0:
+                reloading = True
+                reload_start_time = pygame.time.get_ticks()
 
 class Enemy(GameSprite):
     def update(self):
@@ -96,10 +108,12 @@ def create_enemies(count, level):
     return group
 
 def reset_game():
-    global score, lost, level, enemies
+    global score, lost, level, enemies, ammo, reloading
     score = 0
     lost = 0
     level = 1
+    ammo = max_ammo
+    reloading = False
     player.rect.center = (WIDTH // 2, HEIGHT // 2)
     bullets.empty()
     steroids.empty()
@@ -129,6 +143,12 @@ while game:
         sc.blit(score_text, (WIDTH - 180, 10))
         sc.blit(level_text, (WIDTH // 2 - 50, 10))
 
+        if reloading:
+            current_time = pygame.time.get_ticks()
+            if current_time - reload_start_time >= reload_time:
+                reloading = False
+                ammo = max_ammo
+
         player.update()
         player.reset(sc)
 
@@ -141,26 +161,29 @@ while game:
         steroids.update()
         steroids.draw(sc)
 
-        # Колізія куль і ворогів
+        if reloading:
+            ammo_text = medium_font.render("Reloading...", True, WHITE)
+        else:
+            ammo_text = medium_font.render(f"Ammo: {ammo}", True, WHITE)
+        sc.blit(ammo_text, (player.rect.centerx - ammo_text.get_width() // 2, player.rect.bottom + 10))
+
         collide = pygame.sprite.groupcollide(enemies, bullets, True, True)
         for enemy in collide:
             score += 1
             if score % level_threshold == 0:
                 level += 1
-                enemies.add(create_enemies(1, level))  # +1 ворог кожен рівень
+                enemies.add(create_enemies(1, level))
 
             new_enemy = Enemy("ufo.png", (70, 50),
                 (random.randint(50, WIDTH - 50), 0),
                 random.randint(3, 5 + level))
             enemies.add(new_enemy)
 
-        # Рандомне з'явлення стероїда
         if random.randint(1, 500) == 1:
             new_steroid = Steroid("asteroid.png", (40, 40),
                 (random.randint(50, WIDTH - 50), 0), 3)
             steroids.add(new_steroid)
 
-        # Стероїд + гравець
         hits = pygame.sprite.spritecollide(player, steroids, True)
         for steroid in hits:
             player.speed += 1
